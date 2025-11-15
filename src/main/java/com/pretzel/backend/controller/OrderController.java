@@ -1,0 +1,216 @@
+package com.pretzel.backend.controller;
+
+import com.pretzel.backend.model.*;
+import com.pretzel.backend.repository.*;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import java.util.*;
+
+@RestController
+@RequestMapping("/api/orders")
+//@CrossOrigin(origins = "*")
+public class OrderController {
+
+    private final OrderRepository orderRepository;
+    private final UserRepository userRepository;
+    private final ProductRepository productRepository;
+    private final AuthController authController;
+
+    public OrderController(OrderRepository orderRepository,
+                           UserRepository userRepository,
+                           ProductRepository productRepository,
+                           AuthController authController) {
+        this.orderRepository = orderRepository;
+        this.userRepository = userRepository;
+        this.productRepository = productRepository;
+        this.authController = authController;
+    }
+
+    //rendeles elkeszitese
+    @PostMapping
+    public ResponseEntity<?> createOrder(
+
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestBody Map<String, Object> orderData) {
+
+        // Debug logging
+        System.out.println("Received order data: " + orderData);
+
+        // Authentikacio validalasa
+        if(authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body(Map.of("success", false, "message", "Authentication required"));
+        }
+
+        String token = authHeader.substring(7);
+        User user = authController.getUserFromToken(token);
+
+        if(user == null) {
+            return ResponseEntity.status(401).body(Map.of("success", false, "message", "Invalid token"));
+        }
+
+        try {
+            // Rendeles tenyleges letrehozasa
+            Order order = new Order();
+            order.setUser(user);
+            order.setCustomerName((String) orderData.get("name"));
+            order.setAddress((String) orderData.get("address"));
+            order.setCity((String) orderData.get("city"));
+            order.setZip((String) orderData.get("zip"));
+            order.setPhone((String) orderData.get("phone"));
+            order.setPaymentMethod((String) orderData.get("payment"));
+
+            // Kosar tartalmanak feldolgozasa
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> cartItems = (List<Map<String, Object>>) orderData.get("cart");
+
+            if(cartItems == null || cartItems.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Cart is empty"));
+            }
+
+            double total = 0;
+            for(Map<String, Object> item : cartItems) {
+                try {
+                    String productIdStr = item.get("id").toString();
+                    if (productIdStr.startsWith("p") || productIdStr.startsWith("m")) {
+                        productIdStr = productIdStr.substring(1);
+                    }
+
+                    Long productId = Long.parseLong(productIdStr);
+
+
+                    //Integer quantity = (Integer) item.get("qty");
+                    Integer quantity = null;
+                    Object qtyObj = item.get("qty");
+
+                    if (qtyObj instanceof Integer) {
+                        quantity = (Integer) qtyObj;
+                    } else if (qtyObj instanceof Number) {
+                        quantity = ((Number) qtyObj).intValue();
+                    } else if (qtyObj instanceof String) {
+                        quantity = Integer.parseInt((String) qtyObj);
+                    }
+                    if (quantity == null || quantity <= 0) {
+                        System.err.println("Nem megfelelo termekszam " + productId);
+                    }
+                    Optional<Product> productOpt = productRepository.findById(productId);
+                    if (productOpt.isPresent()) {
+                        Product product = productOpt.get();
+                        OrderItem orderItem = new OrderItem(product, quantity);
+                        order.addItem(orderItem);
+                        total += orderItem.getSubtotal();
+                    } else {
+                        System.err.println("Hibas termek nem talalhato: " + item);
+                    }
+                } catch (Exception e) {
+                    System.err.println("Kosar elemet nem sikerult feldolgozni: " + item);
+                    e.printStackTrace();
+                }
+            }
+            if (order.getItems().isEmpty())
+            {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "No valid items in cart"));
+            }
+            order.setTotalAmount(total);
+            orderRepository.save(order);
+
+
+            System.out.println("Order created successfully: " + order.getId());
+
+            return ResponseEntity.ok(Map.of("success", true, "orderId", order.getId(), "message", "Order placed successfully"
+            ));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", "Failed to create order: " + e.getMessage()
+            ));
+        }
+    }
+
+    // Felhasznalo rendelesei
+    @GetMapping("/my-orders")
+    public ResponseEntity<?> getMyOrders(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        if(authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body(Map.of("success", false, "message", "Authentication required"));
+        }
+
+        String token = authHeader.substring(7);
+        User user = authController.getUserFromToken(token);
+
+        if(user == null) {
+            return ResponseEntity.status(401).body(Map.of("success", false, "message", "Invalid token"));
+        }
+
+        List<Order> orders = orderRepository.findByUserOrderByCreatedAtDesc(user);
+
+        // Frontedhez valo igazitas
+        List<Map<String, Object>> orderList = new ArrayList<>();
+        for(Order order : orders) {
+            Map<String, Object> orderMap = new HashMap<>();
+            orderMap.put("id", order.getId());
+            orderMap.put("customerName", order.getCustomerName());
+            orderMap.put("totalAmount", order.getTotalAmount());
+            orderMap.put("status", order.getStatus());
+            orderMap.put("createdAt", order.getCreatedAt().toString());
+            orderMap.put("itemCount", order.getItems().size());
+            orderList.add(orderMap);
+        }
+
+        return ResponseEntity.ok(Map.of("success", true, "orders", orderList));
+    }
+
+    // rendeles adatainak elerese
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getOrderDetails(
+            @PathVariable Long id,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        if(authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body(Map.of("success", false, "message", "Authentication required"));
+        }
+
+        String token = authHeader.substring(7);
+        User user = authController.getUserFromToken(token);
+
+        if(user == null) {
+            return ResponseEntity.status(401).body(Map.of("success", false, "message", "Invalid token"));
+        }
+
+        Optional<Order> orderOpt = orderRepository.findById(id);
+        if(orderOpt.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("success", false, "message", "Order not found"));
+        }
+
+        Order order = orderOpt.get();
+
+        // A rendeles felhasznalohoz valo tartozasanak vizsgalata
+        if(!order.getUser().getId().equals(user.getId())) {
+            return ResponseEntity.status(403).body(Map.of("success", false, "message", "Access denied"));
+        }
+
+        // Adatok kiadasa a megrendelesrol
+        Map<String, Object> orderDetails = new HashMap<>();
+        orderDetails.put("id", order.getId());
+        orderDetails.put("customerName", order.getCustomerName());
+        orderDetails.put("address", order.getAddress());
+        orderDetails.put("city", order.getCity());
+        orderDetails.put("zip", order.getZip());
+        orderDetails.put("phone", order.getPhone());
+        orderDetails.put("paymentMethod", order.getPaymentMethod());
+        orderDetails.put("totalAmount", order.getTotalAmount());
+        orderDetails.put("status", order.getStatus());
+        orderDetails.put("createdAt", order.getCreatedAt().toString());
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        for(OrderItem item : order.getItems()) {
+            Map<String, Object> itemMap = new HashMap<>();
+            itemMap.put("productName", item.getProduct().getName());
+            itemMap.put("quantity", item.getQuantity());
+            itemMap.put("price", item.getPriceAtPurchase());
+            itemMap.put("subtotal", item.getSubtotal());
+            items.add(itemMap);
+        }
+        orderDetails.put("items", items);
+
+        return ResponseEntity.ok(Map.of("success", true, "order", orderDetails));
+    }
+}
