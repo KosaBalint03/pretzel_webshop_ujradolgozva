@@ -1,14 +1,13 @@
 // guard a main.js többszöri betöltése ellen
 if (window.__pretzelMainLoaded) {
-    console.warn('pretzel main already loaded — skipping duplicate initialization');
+    console.warn('pretzel main already loaded, skipping duplicate initialization');
 } else {
     window.__pretzelMainLoaded = true;
 }
 
-document.addEventListener('DOMContentLoaded', ()=>{
-    // render home products (some selection)
-
-    
+document.addEventListener('DOMContentLoaded', async()=>{
+await initializeProducts();
+    console.log('Products loaded, ready to render');
 
     const homeEl = document.getElementById('home-products');
     if(homeEl){
@@ -70,6 +69,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
                         return;
                     }
 
+        let kuponsUsed = 0;
+                if(!authService.isGuest()) {
+                    const kuponInput = document.getElementById('kupons-used-checkout');
+                    if(kuponInput) {
+                        kuponsUsed = parseInt(kuponInput.value) || 0;
+                    }
+                }
+
+
             // collect data (this is demo only)
             const data = {
                 name: document.getElementById('name').value,
@@ -80,7 +88,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
                 phone: document.getElementById('phone').value,
                 payment: document.getElementById('payment').value,
                 cart: cart,
-                total: cartTotal()
+                total: cartTotal(),
+                kuponsUsed: kuponsUsed
             };
 
 console.log('Sending order:', data); // Debug log
@@ -98,10 +107,18 @@ console.log('Sending order:', data); // Debug log
 console.log('Order response:', result); // Debug log
 
             if(result.success) {
+
+            if(result.newKuponBalance !==undefined){
+            authService.updateKupons(result.newKuponBalance);
+            }
+
                             // kosar kiuritese
                             clearCart();
                             // rendes id tarolasa
                             localStorage.setItem('last_order_id', result.orderId);
+
+                            localStorage.setItem('last_order_kupons_earned', result.kuponsEarned || 0);
+
                             // sikeres lapra iranyitas
                             window.location.href = 'success.html';
                         } else {

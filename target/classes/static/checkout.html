@@ -50,6 +50,31 @@
           <option>Utánvét (demo)</option>
         </select>
       </div>
+        <div id="kupon-checkout-section"></div>
+        ><script>
+        document.addEventListener('DOMContentLoaded', () => {
+    const kuponSection = document.getElementById('kupon-checkout-section');
+
+    if(authService.isAuthenticated() && !authService.isGuest()) {
+        const userKupons = authService.getKupons();
+        const cart = getCart();
+        const total = cartTotal();
+
+        // Get kupons used from cart page (if navigated from there)
+        const kuponsFromCart = localStorage.getItem('cart_kupons_used') || 0;
+
+        kuponSection.innerHTML = `
+        <div class="alert alert-info">
+            <h6><i class="fa-solid fa-ticket"></i> Kupon információ</h6>
+            <p class="mb-2">Elérhető kuponok: <strong>${userKupons}</strong></p>
+            <input type="hidden" id="kupons-used-checkout" value="${kuponsFromCart}">
+            ${kuponsFromCart > 0 ? `<p class="mb-0 text-success">Használt kuponok: ${kuponsFromCart} (${kuponsFromCart}% kedvezmény)</p>` : ''}
+            <p class="mb-0 small text-muted">Minden 500 Ft után 1 kupont kapsz!</p>
+        </div>
+        `;
+    }
+});
+    </script>
       <div class="col-12 text-end">
         <button type="submit" class="btn btn-success">Rendelés leadása</button>
       </div>
