@@ -38,7 +38,7 @@ public class AuthController {
         String token = UUID.randomUUID().toString();
         activeTokens.put(token, user);
 
-        return ResponseEntity.ok(Map.of("success", true, "token", token, "user", Map.of("id", user.getId(), "email", user.getEmail(), "isGuest", false)
+        return ResponseEntity.ok(Map.of("success", true, "token", token, "user", Map.of("id", user.getId(), "email", user.getEmail(), "isGuest", false, "kupons", user.getKupons())
         ));
     }
 
@@ -58,7 +58,7 @@ public class AuthController {
         String token = UUID.randomUUID().toString();
         activeTokens.put(token, user);
 
-        return ResponseEntity.ok(Map.of("success", true, "token", token, "user", Map.of("id", user.getId(), "email", user.getEmail(), "isGuest", user.isGuest())
+        return ResponseEntity.ok(Map.of("success", true, "token", token, "user", Map.of("id", user.getId(), "email", user.getEmail(), "isGuest", user.isGuest(), "kupons", user.getKupons())
         ));
     }
 
@@ -73,7 +73,7 @@ public class AuthController {
         String token = UUID.randomUUID().toString();
         activeTokens.put(token, guestUser);
 
-        return ResponseEntity.ok(Map.of("success", true, "token", token, "user", Map.of("id", guestUser.getId(), "email", guestEmail, "isGuest", true)
+        return ResponseEntity.ok(Map.of("success", true, "token", token, "user", Map.of("id", guestUser.getId(), "email", guestEmail, "isGuest", true, "kupons", 0)
         ));
     }
     //token validacios resz..
@@ -90,7 +90,7 @@ public class AuthController {
             return ResponseEntity.ok(Map.of("success", false, "message", "Invalid token"));
         }
 
-        return ResponseEntity.ok(Map.of("success", true, "user", Map.of("id", user.getId(), "email", user.getEmail(), "isGuest", user.isGuest())
+        return ResponseEntity.ok(Map.of("success", true, "user", Map.of("id", user.getId(), "email", user.getEmail(), "isGuest", user.isGuest(), "kupons", user.getKupons())
         ));
     }
 

@@ -48,7 +48,28 @@ public class OrderController {
             return ResponseEntity.status(401).body(Map.of("success", false, "message", "Invalid token"));
         }
 
+
+
         try {
+            Integer kuponsToUse = 0;
+            if (orderData.containsKey("kuponsUsed")) {
+                Object kuponObj = orderData.get("kuponsUsed");
+                if (kuponObj instanceof Number) {
+                    kuponsToUse = ((Number) kuponObj).intValue();
+                } else if (kuponObj instanceof String) {
+                    kuponsToUse = Integer.parseInt((String) kuponObj);
+                }
+            }
+            if (kuponsToUse > 50) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Maximum 50 kupons can be used per order"));
+            }
+            if (!user.isGuest() && kuponsToUse > user.getKupons()) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Not enough kupons. You have: " + user.getKupons()));
+            }
+            if(user.isGuest() && kuponsToUse > 0) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Guest users cannot use kupons"));
+            }
+
             // Rendeles tenyleges letrehozasa
             Order order = new Order();
             order.setUser(user);
@@ -67,14 +88,13 @@ public class OrderController {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Cart is empty"));
             }
 
-            double total = 0;
+            double subtotal = 0;
             for(Map<String, Object> item : cartItems) {
                 try {
                     String productIdStr = item.get("id").toString();
                     if (productIdStr.startsWith("p") || productIdStr.startsWith("m")) {
                         productIdStr = productIdStr.substring(1);
                     }
-
                     Long productId = Long.parseLong(productIdStr);
 
 
@@ -92,12 +112,13 @@ public class OrderController {
                     if (quantity == null || quantity <= 0) {
                         System.err.println("Nem megfelelo termekszam " + productId);
                     }
+
                     Optional<Product> productOpt = productRepository.findById(productId);
                     if (productOpt.isPresent()) {
                         Product product = productOpt.get();
                         OrderItem orderItem = new OrderItem(product, quantity);
                         order.addItem(orderItem);
-                        total += orderItem.getSubtotal();
+                        subtotal += orderItem.getSubtotal();
                     } else {
                         System.err.println("Hibas termek nem talalhato: " + item);
                     }
@@ -110,13 +131,41 @@ public class OrderController {
             {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "No valid items in cart"));
             }
-            order.setTotalAmount(total);
+
+            order.setOriginalAmount(subtotal);
+            double discount= subtotal * (kuponsToUse /100.0);
+            double finalTotal= subtotal - discount;
+            order.setTotalAmount(finalTotal);
+
+            System.out.println("===== KUPON CALCULATION DEBUG =====");
+            System.out.println("Subtotal (before discount): " + subtotal);
+            System.out.println("Kupons used: " + kuponsToUse);
+            System.out.println("Discount amount: " + discount);
+            System.out.println("Final total (after discount): " + finalTotal);
+            System.out.println("Calculation: " + finalTotal + " / 500 = " + (finalTotal / 500.0));
+            System.out.println("Floored: " + Math.floor(finalTotal / 500.0));
+
+
+            int kuponsEarned = (int) Math.floor(finalTotal/500.0); //finalTotal
+
+            System.out.println("Kupons earned: " + kuponsEarned);
+            System.out.println("===================================");
+
+            order.setKuponsEarned(kuponsEarned);
+
+            if(!user.isGuest()){
+                user.useKupons(kuponsToUse);
+                user.addKupons(kuponsEarned);
+                userRepository.save(user);
+            }
+
             orderRepository.save(order);
 
-
             System.out.println("Order created successfully: " + order.getId());
+            System.out.println("Kupons used: " + kuponsToUse + ", earned: " + kuponsEarned);
+            System.out.println("User new kupon balance: " + user.getKupons());
 
-            return ResponseEntity.ok(Map.of("success", true, "orderId", order.getId(), "message", "Order placed successfully"
+            return ResponseEntity.ok(Map.of("success", true, "orderId", order.getId(), "message", "Order placed successfully", "kuponsUsed", kuponsToUse, "newKuponBalance", user.getKupons(), "discount", discount, "finalTotal", finalTotal
             ));
 
         } catch (Exception e) {

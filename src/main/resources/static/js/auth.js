@@ -24,18 +24,28 @@ class AuthService {
 
         if (!data.success) {
             // Token is invalid, clear it
-            this.logout();
+            this.clearAuth();
             return false;
         }
+
+        this.user= data.user
+        localStorage.setItem('user', JSON.stringify(this.user));
 
         return true;
     } catch (e) {
         console.error('Token validation error', e);
         // If server is down or error, clear token
-        this.logout();
+        this.clearAuth();
         return false;
     }
 }
+
+        clearAuth(){
+        this.token= null;
+        this.user= null;
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        }
 
     async register(email, password) {
         try {
@@ -101,11 +111,8 @@ class AuthService {
     }
 
     logout() {
-        this.token = null;
-        this.user = null;
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        // update navbar and redirect to homepage
+        this.clearAuth();
+        // update navbar   //// and redirect to homepage
         this.updateNavbar();
         //window.location.href = 'index.html';
     }
@@ -122,6 +129,18 @@ class AuthService {
         return this.token;
     }
 
+    getKupons() {
+        return this.user && !this.user.isGuest ? this.user.kupons ||0 : 0;
+    }
+
+    updateKupons(newBalance)
+    {
+        if(this.user && !this.user.isGuest){
+        this.user.kupons= newBalance;
+        localStorage.setItem('user', JSON.stringify(this.user));
+        this.updateNavbar();
+        }
+    }
     async fetchWithAuth(url, options = {}) {
         const headers = {'Content-Type': 'application/json', ...(options.headers || {})};
         if (this.token){
@@ -174,7 +193,15 @@ class AuthService {
         if (this.isAuthenticated()) {
             const user = this.user;
             const isGuest = this.isGuest();
+
+            const kuponDisplay = !isGuest ? `
+                            <span class="badge bg-success">
+                                <i class="fa-solid fa-ticket"></i> Kupon: ${user.kupons || 0}
+                            </span>
+                        ` : '';
+
             userSection.innerHTML = `
+                ${kuponDisplay}
                 <span class="text-muted small d-none d-md-inline">
                     <i class="fa-solid fa-user"></i>
                     ${isGuest ? 'Vendég' : escapeHtml(user.email)}

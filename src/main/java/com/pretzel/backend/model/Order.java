@@ -25,6 +25,10 @@ public class Order {
     private String paymentMethod;
 
     private double totalAmount;
+    private double originalAmount;
+    private int kuponsUsed=0;
+    private int kuponsEarned=0;
+
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
@@ -37,9 +41,11 @@ public class Order {
     public Order() {
         this.createdAt = LocalDateTime.now();
         this.status = "pending";
+        this.kuponsUsed =0;
+        this.kuponsEarned=0;
     }
 
-    // Getters and Setters
+    // Getterek és szetterek:
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -66,6 +72,16 @@ public class Order {
 
     public double getTotalAmount() { return totalAmount; }
     public void setTotalAmount(double totalAmount) { this.totalAmount = totalAmount; }
+
+    public double getOriginalAmount() { return originalAmount; }
+    public void setOriginalAmount(double originalAmount) { this.originalAmount = originalAmount; }
+
+    public int getKuponsUsed() { return kuponsUsed; }
+    public void setKuponsUsed(int kuponsUsed) { this.kuponsUsed = kuponsUsed; }
+
+    public int getKuponsEarned() { return kuponsEarned; }
+    public void setKuponsEarned(int kuponsEarned) { this.kuponsEarned = kuponsEarned; }
+
 
     public List<OrderItem> getItems() { return items; }
     public void setItems(List<OrderItem> items) { this.items = items; }

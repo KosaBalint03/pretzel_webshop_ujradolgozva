@@ -42,11 +42,54 @@ function cartTotal(){
     return cartItemsDetailed().reduce((s,it)=>s + (it.price * it.qty), 0);
 }
 
+// Get kupons to use (from input)
+function getKuponsToUse() {
+    const kuponInput = document.getElementById('kupons-to-use');
+    if(!kuponInput) return 0;
+    const value = parseInt(kuponInput.value) || 0;
+    return Math.max(0, Math.min(value, 50)); // Between 0 and 50
+}
+
+
+// Calculate total with kupon discount
+//function cartTotalWithKupons() {
+//    const originalTotal = cartTotal();
+//    const kuponsUsed = getKuponsToUse();
+//    const discount = originalTotal * (kuponsUsed / 100.0);
+//    return originalTotal - discount;
+//}
+
+// NEW: Update cart display with kupon discount
+function updateCartTotals() {
+    const originalTotal = cartTotal();
+    const kuponsUsed = getKuponsToUse();
+    const discount = originalTotal * (kuponsUsed / 100.0);
+    const finalTotal = originalTotal - discount;
+
+    const cartTotalEl = document.getElementById('cart-total');
+    const discountEl = document.getElementById('cart-discount');
+    const finalTotalEl = document.getElementById('cart-final-total');
+    const discountRow = document.getElementById('discount-row');
+
+
+
+    if(cartTotalEl) cartTotalEl.textContent = originalTotal.toFixed(0) + ' Ft';
+    if(discountEl) discountEl.textContent = '-' + discount.toFixed(0) + ' Ft';
+    if(finalTotalEl) finalTotalEl.textContent = finalTotal.toFixed(0) + ' Ft';
+
+if(discountRow)
+{
+discountRow.style.display =kuponsUsed>0 ? '' : 'none';
+}
+localStorage.setItem('cart_kupons_used', kuponsUsed);
+}
+
+
+
 function updateCartCount(){
     const count = getCart().reduce((s,i)=>s+i.qty,0);
     document.querySelectorAll('#cart-count').forEach(el=>el.textContent = count);
 }
-
 // toast per type
 function showProductToast(product){
     const icons = { pretzel: '🥨', dessert: '🧁', merch: '🎁' };
@@ -91,8 +134,19 @@ function renderCartTable(containerId){
     const el = document.getElementById(containerId);
     if(!el) return;
     const items = cartItemsDetailed();
-    if(items.length===0){ el.innerHTML = '<p>A kosarad üres.</p>'; document.getElementById('cart-total') && (document.getElementById('cart-total').textContent = '0 Ft'); return; }
+
+    if(items.length===0){
+    el.innerHTML = '<p>A kosarad üres.</p>';
+    const cartTotalEl = document.getElementById('cart-total');
+    const finalTotalEl= document.getElementById('cart-final-total');
+     if(cartTotalEl) cartTotalEl.textContent= '0 Ft';
+     if(finalTotalEl) finalTotalEl.textContent = '0 FT';
+            return;
+}
+
+
     let html = `<table class="table"><thead><tr><th>Termék</th><th>Ár</th><th>Mennyiség</th><th>Részösszeg</th><th></th></tr></thead><tbody>`;
+
     for(const it of items){
         html += `<tr>
       <td>${it.name}</td>
@@ -103,13 +157,57 @@ function renderCartTable(containerId){
     </tr>`;
     }
     html += `</tbody></table>`;
+
+const isRegistered = authService.isAuthenticated() && !authService.isGuest();
+    if(isRegistered) {
+        const userKupons = authService.getKupons();
+        html += `
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fa-solid fa-ticket"></i> Kupon használat
+                </h5>
+                <p class="text-muted">Rendelkezésre álló kuponok: <strong>${userKupons}</strong></p>
+                <p class="text-muted small">Minden kupon 1% kedvezményt ad. Maximum 50 kupon használható.</p>
+                <div class="input-group" style="max-width: 300px;">
+                    <input type="number"
+                           id="kupons-to-use"
+                           class="form-control"
+                           min="0"
+                           max="${Math.min(userKupons, 50)}"
+                           value="0"
+                           placeholder="Kuponok száma">
+                    <button class="btn btn-primary" id="apply-kupons">Alkalmaz</button>
+                </div>
+            </div>
+        </div>
+        `;
+    }
+
     el.innerHTML = html;
-    const cartTotalEl = document.getElementById('cart-total');
-    if(cartTotalEl) cartTotalEl.textContent = cartTotal() + ' Ft';
+
     // attach handlers
     el.querySelectorAll('.remove-btn').forEach(b=>b.addEventListener('click', e=>{ removeFromCart(e.currentTarget.dataset.id); renderCartTable(containerId); }));
     el.querySelectorAll('.qty-input').forEach(inp=> inp.addEventListener('change', e=>{ updateQty(e.currentTarget.dataset.id, parseInt(e.currentTarget.value)||1); renderCartTable(containerId); }));
+
+const applyBtn = document.getElementById('apply-kupons');
+    if(applyBtn) {
+        applyBtn.addEventListener('click', () => {
+            updateCartTotals();
+        });
+    }
+
+    const kuponInput = document.getElementById('kupons-to-use');
+    if(kuponInput) {
+        kuponInput.addEventListener('input', () => {
+            updateCartTotals();
+        });
+    }
+
+    // Initialize totals
+    updateCartTotals();
 }
+
 
 window.addEventListener('storage', updateCartCount);
 document.addEventListener('DOMContentLoaded', updateCartCount);

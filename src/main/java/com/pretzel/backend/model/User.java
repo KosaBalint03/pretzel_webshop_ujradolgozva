@@ -20,8 +20,12 @@ public class User {
 
     private LocalDateTime createdAt;
 
+    private int kupons;
+
     public User() {
+
         this.createdAt = LocalDateTime.now();
+        this.kupons = 10;
     }
 
     public User(String email, String password, boolean isGuest) {
@@ -29,6 +33,7 @@ public class User {
         this.password = password;
         this.isGuest = isGuest;
         this.createdAt = LocalDateTime.now();
+        this.kupons = isGuest ? 0 : 10;
     }
 
     // Getters and Setters
@@ -46,5 +51,20 @@ public class User {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public int getKupons() {return kupons; }
+    public void setKupons(int kupons) {this.kupons = kupons;}
+
+    public void addKupons(int amount){
+        this.kupons += amount;
+    }
+    public boolean useKupons(int amount)
+    {
+        if(this.kupons >= amount){
+            this.kupons -= amount;
+            return true;
+        }
+        return false;
+    }
 
 }
