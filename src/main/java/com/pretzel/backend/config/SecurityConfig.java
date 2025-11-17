@@ -20,27 +20,28 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Enable CORS with custom configuration
+                // CORS alkalmazása
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                // Disable CSRF (since you're building an API, not form-based auth)
+                // CSRF kikapcsolása, mert nem kell
                 .csrf(csrf -> csrf.disable())
 
-                // Configure authorization
+                // Hozzáférés kezelése
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints (no authentication required)
-                        //.requestMatchers("/api/auth/**").permitAll()  // Login, register, guest
-                        //.requestMatchers("/api/products/**").permitAll()  // View products
-                        //.requestMatchers("/h2-console/**").permitAll()  // H2 console (dev only)
+                        // ezeken még dolgozni, beállítani a végtermékben!
+                        // Publikus végpontok (hitelesítés nélkül
+                        //.requestMatchers("/api/auth/**").permitAll()  // bejelntkezés, regisztráció, vendégfelhasználó
+                        //.requestMatchers("/api/products/**").permitAll()  // termékekhez
+                        //.requestMatchers("/h2-console/**").permitAll()  // H2 console-hoz.
 
-                        // Protected endpoints (authentication required)
-                        //.requestMatchers("/api/orders/**").authenticated()  // Orders need auth
+                        // Hitelesítést igénylő végpont
+                        //.requestMatchers("/api/orders/**").authenticated()  // Rendelések
 
-                        // Everything else
+                        // Bárki..
                         .anyRequest().permitAll()
                 )
 
-                // Allow H2 console to work (dev only)
+                // H2 konzol engedélyezése
                 .headers(headers -> headers
                         .frameOptions(frame -> frame.disable())
                 );
@@ -52,42 +53,44 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Allowed origins (where your frontend runs)
+        // Engedélyezett kapcsolati források
         configuration.setAllowedOrigins(Arrays.asList(
-                "http://localhost:8000",      // Python http.server
-                "http://127.0.0.1:8000",      // Alternative localhost
-                "http://localhost:8080",      // If serving from Spring Boot
-                "http://localhost:5500",      // VS Code Live Server
-                "http://127.0.0.1:5500"       // VS Code Live Server alternative!!
+                "http://localhost:8000",      // Python http szerver
+                "http://127.0.0.1:8000",      // Alternatív localhost cím
+                "http://localhost:8080",      // 8080-as localhost (springboot)
+                "http://localhost:5500",      // előző csak vscode live server portal.
+                "http://127.0.0.1:5500"       // VScode live szerver (ez van használva9
         ));
 
-        // Allowed HTTP methods
+        // Engedélyezett http műveletek listája
         configuration.setAllowedMethods(Arrays.asList(
                 "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"
         ));
 
-        // Allowed headers
+        // Engedélyezett fejlécek (header)
         configuration.setAllowedHeaders(Arrays.asList(
+                // majd beállítani!
                 //"Authorization",
                 //"Content-Type",
                 //"Accept",
                 //"X-Requested-With"
                 // !!
+                // bármilyen header..
                 "*"
         ));
 
-        // Allow credentials (cookies, authorization headers)
+        // Hitelesítésia adatok kezelése..
         configuration.setAllowCredentials(true);
 
-        // Expose headers that frontend can read
+        // Frontend által olvasható fejlécek megmutatása
         configuration.setExposedHeaders(Arrays.asList(
                 "Authorization"
         ));
 
-        // How long the preflight request can be cached (in seconds)
+        // preflight kérés élettartama
         configuration.setMaxAge(3600L);
 
-        // Apply this configuration to all endpoints
+        // minden végponthoz hozzárendlejük a beállítást
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
 

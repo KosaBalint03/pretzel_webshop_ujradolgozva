@@ -17,24 +17,24 @@
 
 <main class="py-5 text-center">
   <div class="container">
-      <div id=" kupon-earned-seciton"></div>
+      <div id="szerzett_kuponok_resz"></div>
 
       <script>
           document.addEventListener('DOMContentLoaded', () => {
-              const kuponsEarned = localStorage.getItem('last_order_kupons_earned');
-              const section = document.getElementById('kupon-earned-section');
+              const SzerzettKuponok = localStorage.getItem('utolso_vasarlas_utanni_szerzett_kuponok');
+              const section = document.getElementById('kupon-szerzett_kuponok_resz');
 
-              if(kuponsEarned && parseInt(kuponsEarned) > 0 && !authService.isGuest()) {
+              if(SzerzettKuponok && parseInt(SzerzettKuponok) > 0 && !authService.isGuest()) {
                   section.innerHTML = `
                   <div class="alert alert-success">
                       <h5><i class="fa-solid fa-gift"></i> Gratulálunk!</h5>
-                      <p>Kaptál <strong>${kuponsEarned} kupont</strong> ehhez a vásárláshoz!</p>
+                      <p>Kaptál <strong>${SzerzettKuponok} kupont</strong>, melyet következő vásárláskor felhasználhatsz!</p>
                       <p class="mb-0">Új egyenleg: <strong>${authService.getKupons()} kupon</strong></p>
                   </div>
                   `;
 
-                  // Clean up
-                  localStorage.removeItem('last_order_kupons_earned');
+                  // kuponadat torlese
+                  localStorage.removeItem('utolso_vasarlas_utanni_szerzett_kuponok');
               }
           });
 

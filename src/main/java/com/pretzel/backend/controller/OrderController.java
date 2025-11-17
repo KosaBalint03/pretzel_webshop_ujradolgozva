@@ -8,7 +8,6 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/orders")
-//@CrossOrigin(origins = "*")
 public class OrderController {
 
     private final OrderRepository orderRepository;
@@ -26,17 +25,17 @@ public class OrderController {
         this.authController = authController;
     }
 
-    //rendeles elkeszitese
+    //rendeles elkészítése
     @PostMapping
     public ResponseEntity<?> createOrder(
 
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @RequestBody Map<String, Object> orderData) {
 
-        // Debug logging
-        System.out.println("Received order data: " + orderData);
+        // Debug
+        //System.out.println("Beérkezett rendelés adatok: " + orderData);
 
-        // Authentikacio validalasa
+        // hitelesítés ellenörzése
         if(authHeader == null || !authHeader.startsWith("Bearer ")) {
             return ResponseEntity.status(401).body(Map.of("success", false, "message", "Authentication required"));
         }
@@ -70,7 +69,7 @@ public class OrderController {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Guest users cannot use kupons"));
             }
 
-            // Rendeles tenyleges letrehozasa
+            // Rendelés tényleges létrehozása
             Order order = new Order();
             order.setUser(user);
             order.setCustomerName((String) orderData.get("name"));
@@ -80,7 +79,7 @@ public class OrderController {
             order.setPhone((String) orderData.get("phone"));
             order.setPaymentMethod((String) orderData.get("payment"));
 
-            // Kosar tartalmanak feldolgozasa
+            // Kosár tartalmának feldolgozása
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> cartItems = (List<Map<String, Object>>) orderData.get("cart");
 
@@ -98,7 +97,6 @@ public class OrderController {
                     Long productId = Long.parseLong(productIdStr);
 
 
-                    //Integer quantity = (Integer) item.get("qty");
                     Integer quantity = null;
                     Object qtyObj = item.get("qty");
 
@@ -110,7 +108,7 @@ public class OrderController {
                         quantity = Integer.parseInt((String) qtyObj);
                     }
                     if (quantity == null || quantity <= 0) {
-                        System.err.println("Nem megfelelo termekszam " + productId);
+                        System.err.println("Nem megfelelő termékszám " + productId);
                     }
 
                     Optional<Product> productOpt = productRepository.findById(productId);
@@ -120,10 +118,10 @@ public class OrderController {
                         order.addItem(orderItem);
                         subtotal += orderItem.getSubtotal();
                     } else {
-                        System.err.println("Hibas termek nem talalhato: " + item);
+                        System.err.println("Hibás termék nem találhatü: " + item);
                     }
                 } catch (Exception e) {
-                    System.err.println("Kosar elemet nem sikerult feldolgozni: " + item);
+                    System.err.println("A következő kosár elemet nem sikerült feldolgozni: " + item);
                     e.printStackTrace();
                 }
             }
@@ -137,19 +135,8 @@ public class OrderController {
             double finalTotal= subtotal - discount;
             order.setTotalAmount(finalTotal);
 
-            System.out.println("===== KUPON CALCULATION DEBUG =====");
-            System.out.println("Subtotal (before discount): " + subtotal);
-            System.out.println("Kupons used: " + kuponsToUse);
-            System.out.println("Discount amount: " + discount);
-            System.out.println("Final total (after discount): " + finalTotal);
-            System.out.println("Calculation: " + finalTotal + " / 500 = " + (finalTotal / 500.0));
-            System.out.println("Floored: " + Math.floor(finalTotal / 500.0));
-
-
-            int kuponsEarned = (int) Math.floor(finalTotal/500.0); //finalTotal
-
-            System.out.println("Kupons earned: " + kuponsEarned);
-            System.out.println("===================================");
+            int kuponsEarned = (int) Math.floor(finalTotal/500.0);
+            //jelenleg a kuponos ár a mérvadó a kapott kuponok adása esetén (átírható subtotal-ra is)
 
             order.setKuponsEarned(kuponsEarned);
 
@@ -161,9 +148,9 @@ public class OrderController {
 
             orderRepository.save(order);
 
-            System.out.println("Order created successfully: " + order.getId());
-            System.out.println("Kupons used: " + kuponsToUse + ", earned: " + kuponsEarned);
-            System.out.println("User new kupon balance: " + user.getKupons());
+            System.out.println("Rendelés sikeresen létrehozva! Rendelés száma: " + order.getId());
+            System.out.println("Használt kuponok száma: " + kuponsToUse + " Kapott kuponok száma: " + kuponsEarned);
+            System.out.println("Felhasználó új kuponegyenlege: " + user.getKupons());
 
             return ResponseEntity.ok(Map.of("success", true, "orderId", order.getId(), "message", "Order placed successfully", "kuponsUsed", kuponsToUse, "newKuponBalance", user.getKupons(), "discount", discount, "finalTotal", finalTotal
             ));
@@ -175,7 +162,7 @@ public class OrderController {
         }
     }
 
-    // Felhasznalo rendelesei
+    // Felhasználó rendelései
     @GetMapping("/my-orders")
     public ResponseEntity<?> getMyOrders(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         if(authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -191,7 +178,7 @@ public class OrderController {
 
         List<Order> orders = orderRepository.findByUserOrderByCreatedAtDesc(user);
 
-        // Frontedhez valo igazitas
+        // Frontedes igazítás
         List<Map<String, Object>> orderList = new ArrayList<>();
         for(Order order : orders) {
             Map<String, Object> orderMap = new HashMap<>();
@@ -207,7 +194,7 @@ public class OrderController {
         return ResponseEntity.ok(Map.of("success", true, "orders", orderList));
     }
 
-    // rendeles adatainak elerese
+    // rendelés adatainak elérése
     @GetMapping("/{id}")
     public ResponseEntity<?> getOrderDetails(
             @PathVariable Long id,
@@ -231,12 +218,12 @@ public class OrderController {
 
         Order order = orderOpt.get();
 
-        // A rendeles felhasznalohoz valo tartozasanak vizsgalata
+        // A rendelés felhasználóhoz való tartozásának vizsgálata
         if(!order.getUser().getId().equals(user.getId())) {
             return ResponseEntity.status(403).body(Map.of("success", false, "message", "Access denied"));
         }
 
-        // Adatok kiadasa a megrendelesrol
+        // Adatok kiadása a megrendelésről
         Map<String, Object> orderDetails = new HashMap<>();
         orderDetails.put("id", order.getId());
         orderDetails.put("customerName", order.getCustomerName());

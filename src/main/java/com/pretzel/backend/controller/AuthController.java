@@ -9,17 +9,16 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/auth")
-//@CrossOrigin(origins = "*")
 public class AuthController {
 
     private final UserRepository userRepository;
-    // simple in-memory user store for dev only
+    // in-memory felhasználói adattárolás
     private final Map<String, User> activeTokens = new HashMap<>();
 
     public AuthController(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
-    // register
+    // Regisztáció
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody Map<String,String> body) {
         String email = body.get("email");
@@ -43,7 +42,7 @@ public class AuthController {
     }
 
 
-    // login
+    // bejelentkezés
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String,String> body) {
         String email = body.get("email");
@@ -62,7 +61,7 @@ public class AuthController {
         ));
     }
 
-    // guest
+    // vendég felhasználó
     @PostMapping("/guest")
     public ResponseEntity<?> guest() {
         String guestEmail = "guest_" + UUID.randomUUID().toString().substring(0,8) + "@pretzel.local";
@@ -76,7 +75,7 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("success", true, "token", token, "user", Map.of("id", guestUser.getId(), "email", guestEmail, "isGuest", true, "kupons", 0)
         ));
     }
-    //token validacios resz..
+    //token validácios rész..
     @GetMapping("/validate")
     public ResponseEntity<?> validateToken(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         if(authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -94,7 +93,7 @@ public class AuthController {
         ));
     }
 
-    // Kijelentkezes
+    // Kijelentkezés
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         if(authHeader != null && authHeader.startsWith("Bearer ")) {
@@ -104,7 +103,7 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("success", true));
     }
 
-    // user kinyerese tokenbol
+    // user kinyerése tokenből
     public User getUserFromToken(String token) {
         return activeTokens.get(token);
     }

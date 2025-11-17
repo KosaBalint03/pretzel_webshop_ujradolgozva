@@ -18,7 +18,7 @@ public class OrderItem {
     private Product product;
 
     private int quantity;
-    private double priceAtPurchase; // Vasarlaskori ar tarolasa
+    private double priceAtPurchase; // Vásárláskori ár tárolására
 
     public OrderItem() {}
 
@@ -28,7 +28,7 @@ public class OrderItem {
         this.priceAtPurchase = product.getPrice();
     }
 
-    // Getters and Setters
+    // getter/ setter..
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

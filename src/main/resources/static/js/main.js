@@ -1,26 +1,26 @@
 // guard a main.js többszöri betöltése ellen
 if (window.__pretzelMainLoaded) {
-    console.warn('pretzel main already loaded, skipping duplicate initialization');
+    console.warn('main már be van töltve (duplikált betöltés!!)');
 } else {
     window.__pretzelMainLoaded = true;
 }
 
 document.addEventListener('DOMContentLoaded', async()=>{
 await initializeProducts();
-    console.log('Products loaded, ready to render');
+    // debug: console.log('termékadatok betöltve, képbetöltés kezdődik!');
 
     const homeEl = document.getElementById('home-products');
     if(homeEl){
         renderProducts('home-products', p=>p.type==='pretzel' || p.type==='dessert');
     }
-    // render food and merch pages
+    // kaja és merch lapok renderelése
     const foodEl = document.getElementById('food-products');
     if(foodEl) renderProducts('food-products', p=>p.type==='pretzel' || p.type==='dessert');
 
     const merchEl = document.getElementById('merch-products');
     if(merchEl) renderProducts('merch-products', p=>p.type==='merch');
 
-    // product detail page
+    // termékadat lap
     const params = new URLSearchParams(window.location.search);
     const pid = params.get('id');
     if(pid && document.getElementById('product-detail')){
@@ -41,28 +41,28 @@ await initializeProducts();
         }
     }
 
-    // render cart on cart page
+    // kosár rendelése a kosár lapon
     if(document.getElementById('cart-container')) renderCartTable('cart-container');
 
-    // clear cart button
+    // kosár ürítése gomb
     const clearBtn = document.getElementById('clear-cart');
     if(clearBtn) clearBtn.addEventListener('click', ()=>{ if(confirm('Biztosan üríted a kosarat?')){ clearCart(); renderCartTable('cart-container'); }});
 
-    // checkout form submit
+    // kifizetési lap elküldése
     const checkoutForm = document.getElementById('checkout-form');
     if(checkoutForm){
         checkoutForm.addEventListener('submit', async (e)=>{
             e.preventDefault();
 
-            // Check authentication
+            // authtenikáció ellenörzése (regisztrációhoz kötött vásárlás miatt)
                     if(!authService.isAuthenticated()) {
-                        alert('Please login or continue as guest to complete checkout');
+                        alert('Kérlek jelentkez állandó vagy vendég profilodba a fizetéshez!');
                         authService.requireAuth('checkout.html');
                         return;
                     }
             const cart = getCart();
 
-            console.log('Cart contents: ', cart); // Debug
+            // DEBUG console.log('Kosár tartalma: ', cart);
 
             if(!cart || cart.length === 0) {
                         alert('A kosarad üres!');
@@ -78,7 +78,7 @@ await initializeProducts();
                 }
 
 
-            // collect data (this is demo only)
+            // Adatok güyjtése a form-ból
             const data = {
                 name: document.getElementById('name').value,
                 email: document.getElementById('email').value,
@@ -92,11 +92,11 @@ await initializeProducts();
                 kuponsUsed: kuponsUsed
             };
 
-console.log('Sending order:', data); // Debug log
+// DEBUG console.log('rendelés elküldése:', data);
 
 
             try {
-            // Send order to backend
+            // rendelés elküldése a backend-nek
             const response = await authService.fetchWithAuth('http://localhost:8080/api/orders', {
                 method: 'POST',
                 body: JSON.stringify(data)
@@ -104,7 +104,7 @@ console.log('Sending order:', data); // Debug log
 
             const result = await response.json();
 
-console.log('Order response:', result); // Debug log
+// DEBUG console.log('rendelés válasza:', result);
 
             if(result.success) {
 
@@ -114,10 +114,10 @@ console.log('Order response:', result); // Debug log
 
                             // kosar kiuritese
                             clearCart();
-                            // rendes id tarolasa
+                            // rendelés id tarolasa
                             localStorage.setItem('last_order_id', result.orderId);
 
-                            localStorage.setItem('last_order_kupons_earned', result.kuponsEarned || 0);
+                            localStorage.setItem('utolso_vasarlas_utanni_szerzett_kuponok', result.kuponsEarned || 0);
 
                             // sikeres lapra iranyitas
                             window.location.href = 'success.html';
@@ -131,6 +131,6 @@ console.log('Order response:', result); // Debug log
         });
     }
 
-    // update cart count badges initially
+    // kosár frissítése
     updateCartCount();
 });

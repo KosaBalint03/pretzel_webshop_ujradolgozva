@@ -1,12 +1,9 @@
-// js/auth.js - authentication helper (front-end)
-// Usage: include config.js BEFORE this file in HTML
-
 class AuthService {
     constructor() {
         this.token = localStorage.getItem('token') || null;
         this.user = JSON.parse(localStorage.getItem('user') || 'null');
         this.apiBase = 'http://localhost:8080/api/auth';
-        //this.apiBase = (window.CONFIG && window.CONFIG.API_BASE_URL) ? window.CONFIG.API_BASE_URL : 'http://localhost:8080/api/auth';
+
     }
 
    async validateToken() {
@@ -23,18 +20,18 @@ class AuthService {
         const data = await res.json();
 
         if (!data.success) {
-            // Token is invalid, clear it
+            // A token érvénytelen, ezért töröljük is
             this.clearAuth();
             return false;
         }
 
         this.user= data.user
-        localStorage.setItem('user', JSON.stringify(this.user));
+        localStorage.setItem('user', JSON.stringify(this.user)); // mégnézni átírható-e
 
         return true;
     } catch (e) {
-        console.error('Token validation error', e);
-        // If server is down or error, clear token
+        console.error('Token hitelesítési hiba!', e);
+        // Ha a backend nem lenne elérhető, töröljük  a tokent
         this.clearAuth();
         return false;
     }
@@ -59,10 +56,10 @@ class AuthService {
                 this.saveAuthData(data.token, data.user);
                 return { success: true, user: data.user };
             }
-            return { success: false, message: data?.message || 'Registration failed' };
+            return { success: false, message: data?.message || 'Regisztáció sikertelen!' };
         } catch (e) {
-            console.error('register error', e);
-            return { success: false, message: 'Network error' };
+            console.error('Regiszrációs hiba: ', e);
+            return { success: false, message: 'Hálózati hiba történt.' };
         }
     }
 
@@ -78,10 +75,10 @@ class AuthService {
                 this.saveAuthData(data.token, data.user);
                 return { success: true, user: data.user };
             }
-            return { success: false, message: data?.message || 'Login failed' };
+            return { success: false, message: data?.message || 'Bejelentkezés sikertelen!' };
         } catch (e) {
-            console.error('login error', e);
-            return { success: false, message: 'Network error' };
+            console.error('Bejelentkezési hiba: ', e);
+            return { success: false, message: 'Hálózati hiba történt.' };
         }
     }
 
@@ -96,10 +93,10 @@ class AuthService {
                 this.saveAuthData(data.token, data.user);
                 return { success: true, user: data.user };
             }
-            return { success: false, message: data?.message || 'Guest login failed' };
+            return { success: false, message: data?.message || 'Vendég felhasználói bejelentkezési sikertelen!' };
         } catch (e) {
-            console.error('guest login error', e);
-            return { success: false, message: 'Network error' };
+            console.error('Vendég felhasználói bejelentkezési hiba: ', e);
+            return { success: false, message: 'Hálózati hiba történt.' };
         }
     }
 
@@ -112,9 +109,7 @@ class AuthService {
 
     logout() {
         this.clearAuth();
-        // update navbar   //// and redirect to homepage
         this.updateNavbar();
-        //window.location.href = 'index.html';
     }
 
     isAuthenticated() {
@@ -145,10 +140,10 @@ class AuthService {
         const headers = {'Content-Type': 'application/json', ...(options.headers || {})};
         if (this.token){
         headers['Authorization'] = `Bearer ${this.token}`;
-        console.log("Keres kuldese a kovetkezo tokennel!: ", this.token.substring(0,10)); //debug info!!
+        // DEBUG console.log("Kéres küldese a következő tokennel!: ", this.token.substring(0,10));
         }else
         {
-        console.warn("Nincs token authentikalt elereshez!!!! ") //debug info!!
+        //DEBUG! console.warn("Nincs token authentikált eléréshez!!")
         }
 
         try{
@@ -157,9 +152,9 @@ class AuthService {
 
         console.log('Response status:', response.status);
         if (response.status === 401 || response.status === 403) {
-                    console.error('Authentication sikertelen - token torlese');
+                    console.error('Hitelesítés sikeretelen. Token törlése.');
                     this.logout();
-                    throw new Error('Authentication nem sikeres. jelentkez be ismet login again.');
+                    throw new Error('Hitelesítés sikertelen, kérlek jelentkez be újra.');
                 }
                 return response;
         }catch (error)
@@ -168,8 +163,6 @@ class AuthService {
         throw error;
         }
        }
-
-
 
     isGuest() {
         return this.user && this.user.isGuest === true;
@@ -226,7 +219,7 @@ class AuthService {
             navbar.appendChild(userSection);
         }
 
-        // attach logout handler if present
+        // kijelentkezés kezelő kapcsolása ha kell
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) logoutBtn.addEventListener('click', () => this.logout());
     }
@@ -250,7 +243,7 @@ class AuthService {
     }
 }
 
-// helper
+// segítő/helper..
 function escapeHtml(s){ if(!s) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
 
 const authService = new AuthService();
